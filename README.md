@@ -56,4 +56,4 @@ Semantic versioning via git tags (`vX.Y.Z`). Breaking changes only on major bump
 
 ## License
 
-Business Source License 1.1 — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE).
