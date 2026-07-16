@@ -43,6 +43,19 @@ func WithToken(token string) Option {
 	}
 }
 
+// WithAPIKey configures the client to authenticate via the X-API-Key header
+// instead of a JWT bearer token. Use this for machine-to-machine callers
+// holding an admin API key (see APIKeyService / clavex_api_key) — including
+// org-scoped keys (org_id set at creation), which is the credential model
+// used by the Clavex Kubernetes Operator's per-CR authSecretRef.
+func WithAPIKey(key string) Option {
+	return func(c *Client) {
+		c.mu.Lock()
+		c.apiKey = key
+		c.mu.Unlock()
+	}
+}
+
 // ── Client ────────────────────────────────────────────────────────────────────
 
 // Client is the root of the Clavex management SDK.
@@ -60,6 +73,7 @@ type Client struct {
 	token    string
 	tokenExp time.Time
 	autoAuth bool
+	apiKey   string
 	orgSlug  string
 	email    string
 	password string
@@ -307,9 +321,13 @@ func (c *Client) do(ctx context.Context, method, path string, body, out interfac
 			return ErrCircuitOpen{}
 		}
 
-		token, err := c.bearerToken(ctx)
-		if err != nil {
-			return err
+		var token string
+		if c.apiKey == "" {
+			var err error
+			token, err = c.bearerToken(ctx)
+			if err != nil {
+				return err
+			}
 		}
 
 		var bodyReader io.Reader
@@ -321,7 +339,11 @@ func (c *Client) do(ctx context.Context, method, path string, body, out interfac
 		if err != nil {
 			return err
 		}
-		req.Header.Set("Authorization", "Bearer "+token)
+		if c.apiKey != "" {
+			req.Header.Set("X-API-Key", c.apiKey)
+		} else {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
 		if rawBody != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
