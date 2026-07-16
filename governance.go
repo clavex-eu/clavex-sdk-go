@@ -463,6 +463,15 @@ type IssueAgentTokenParams struct {
 	Scope       string  `json:"scope,omitempty"`
 	TTLSeconds  int     `json:"ttl_seconds,omitempty"`
 	MCPServerID *string `json:"mcp_server_id,omitempty"`
+	// Audience optionally overrides the token's "aud" claim (default: the
+	// issuer). Must be present in the org's agent-token audience allowlist.
+	// Typical use: cloud STS/WIF federation for Terraform, e.g.
+	// "sts.amazonaws.com" (AWS), "api://AzureADTokenExchange" (Azure), or a
+	// GCP Workload Identity Federation pool provider audience — the signed
+	// token is then handed to the aws/azurerm/google Terraform provider's
+	// native OIDC federation (assume_role_with_web_identity / use_oidc /
+	// external_account); Clavex itself never calls the cloud STS/WIF APIs.
+	Audience *string `json:"audience,omitempty"`
 }
 
 // AgentToken is an issued AI-agent (MCP) access token record.
@@ -478,6 +487,9 @@ type AgentToken struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	MCPServerID *string    `json:"mcp_server_id,omitempty"`
 	RevokedAt   *time.Time `json:"revoked_at,omitempty"`
+	// Audience is the "aud" claim embedded in the signed JWT at issuance
+	// time. Nil/empty means the issuer default (legacy behaviour).
+	Audience *string `json:"audience,omitempty"`
 }
 
 // IssuedAgentToken carries the signed JWT (shown once) plus the record ID.

@@ -56,9 +56,9 @@ type CrossOrgTrustService struct{ c *Client }
 // CreateCrossOrgTrustParams defines the fields for a cross-org trust.
 type CreateCrossOrgTrustParams struct {
 	// TrustedOrgSlug is the slug of the org whose tokens will be accepted.
-	TrustedOrgSlug string   `json:"trusted_org_slug"`
+	TrustedOrgSlug string `json:"trusted_org_slug"`
 	// AllowedScopes limits the scopes that can be exchanged. Empty = all.
-	AllowedScopes  []string `json:"allowed_scopes,omitempty"`
+	AllowedScopes []string `json:"allowed_scopes,omitempty"`
 }
 
 // Create establishes a new cross-org trust relationship.
@@ -110,6 +110,12 @@ type CreateAPIKeyParams struct {
 	Name string `json:"name"`
 	// ExpiresIn is the lifetime in seconds. 0 = no expiry.
 	ExpiresIn int `json:"expires_in,omitempty"`
+	// OrgID optionally scopes the key to a single organization (UUID).
+	// Omitted/empty = superadmin key (cross-org, legacy behaviour).
+	OrgID string `json:"org_id,omitempty"`
+	// Permissions optionally restricts the key beyond org scoping, e.g.
+	// []string{"clients:write"}. Omitted = unrestricted within scope.
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 // CreateAPIKeyResult holds the newly created API key.
@@ -128,11 +134,16 @@ func (s *APIKeyService) Create(ctx context.Context, p CreateAPIKeyParams) (*Crea
 	return &out, s.c.post(ctx, "/api/v1/superadmin/api-keys", p, &out)
 }
 
-// List returns all API keys.
+// List returns all API keys. If orgID is non-empty, only keys scoped to that
+// org are returned (superadmin keys are excluded).
 // Requires superadmin privileges.
-func (s *APIKeyService) List(ctx context.Context) ([]APIKey, error) {
+func (s *APIKeyService) List(ctx context.Context, orgID string) ([]APIKey, error) {
+	path := "/api/v1/superadmin/api-keys"
+	if orgID != "" {
+		path += "?org_id=" + orgID
+	}
 	var out []APIKey
-	return out, s.c.get(ctx, "/api/v1/superadmin/api-keys", &out)
+	return out, s.c.get(ctx, path, &out)
 }
 
 // Revoke permanently invalidates an API key.
@@ -143,10 +154,12 @@ func (s *APIKeyService) Revoke(ctx context.Context, keyID string) error {
 
 // APIKey is an admin API key record (without the secret).
 type APIKey struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Prefix    string     `json:"prefix"` // e.g. "cvx_sk_..." for display
-	ExpiresAt *time.Time `json:"expires_at,omitempty"`
-	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Prefix      string     `json:"prefix"` // e.g. "cvx_sk_..." for display
+	OrgID       string     `json:"org_id,omitempty"`
+	Permissions []string   `json:"permissions,omitempty"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
