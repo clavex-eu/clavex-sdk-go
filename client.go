@@ -56,6 +56,58 @@ func WithAPIKey(key string) Option {
 	}
 }
 
+// ── Declarative-management marker ───────────────────────────────────────────────
+
+// Marker request headers. A declarative caller (the Clavex Kubernetes operator)
+// wraps its request context with WithManagedBy / WithManagedRelease; do() then
+// stamps these headers so the server records who owns the resource (see the
+// server's managed_by/managed_ref columns).
+const (
+	headerManagedBy      = "X-Clavex-Managed-By"
+	headerManagedRef     = "X-Clavex-Managed-Ref"
+	headerManagedRelease = "X-Clavex-Managed-Release"
+)
+
+type managedCtxKey struct{}
+
+type managedCtx struct {
+	by      string
+	ref     string
+	release bool
+}
+
+// WithManagedBy returns a context that stamps the declarative-management marker
+// on every create/update the SDK performs with it. by is the owning system
+// (e.g. "k8s-operator"); ref is a human-readable pointer to the owning object
+// (e.g. "ClavexClient/clavex-operator-system/testclient") — pass "" to omit it.
+func WithManagedBy(ctx context.Context, by, ref string) context.Context {
+	return context.WithValue(ctx, managedCtxKey{}, managedCtx{by: by, ref: ref})
+}
+
+// WithManagedRelease returns a context that asks the server to disown the
+// resource on the next write — clearing its marker without changing its
+// configuration. Used when the operator stops managing a resource (or a
+// ClavexOrg settings section) but leaves the live value in place.
+func WithManagedRelease(ctx context.Context) context.Context {
+	return context.WithValue(ctx, managedCtxKey{}, managedCtx{release: true})
+}
+
+func applyManagedHeaders(ctx context.Context, req *http.Request) {
+	mc, ok := ctx.Value(managedCtxKey{}).(managedCtx)
+	if !ok {
+		return
+	}
+	switch {
+	case mc.release:
+		req.Header.Set(headerManagedRelease, "true")
+	case mc.by != "":
+		req.Header.Set(headerManagedBy, mc.by)
+		if mc.ref != "" {
+			req.Header.Set(headerManagedRef, mc.ref)
+		}
+	}
+}
+
 // ── Client ────────────────────────────────────────────────────────────────────
 
 // Client is the root of the Clavex management SDK.
@@ -347,6 +399,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out interfac
 		if rawBody != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
+		applyManagedHeaders(ctx, req)
 
 		resp, err := c.hc.Do(req)
 		if err != nil {

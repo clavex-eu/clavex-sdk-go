@@ -35,6 +35,13 @@ func (s *PasswordPolicyService) Put(ctx context.Context, orgID string, p Passwor
 	return &out, s.c.put(ctx, orgPath(orgID, "/password-policy"), p, &out)
 }
 
+// ReleaseManagedMarker clears the declarative-management marker on orgID's
+// password policy without changing its configured values. A declarative caller
+// (the Kubernetes operator) calls this when it stops managing the section.
+func (s *PasswordPolicyService) ReleaseManagedMarker(ctx context.Context, orgID string) error {
+	return s.c.delete(ctx, orgPath(orgID, "/password-policy/managed-marker"))
+}
+
 // SMTPService manages the SMTP settings for an organisation.
 type SMTPService struct{ c *Client }
 

@@ -66,6 +66,14 @@ func (s *RateLimitService) Update(ctx context.Context, orgID string, cfg RateLim
 	return &out, s.c.put(ctx, orgPath(orgID, "/rate-limits"), cfg, &out)
 }
 
+// ReleaseManagedMarker clears the declarative-management marker on orgID's
+// rate-limit config without changing its configured values. A declarative
+// caller (the Kubernetes operator) calls this when it stops managing the
+// section.
+func (s *RateLimitService) ReleaseManagedMarker(ctx context.Context, orgID string) error {
+	return s.c.delete(ctx, orgPath(orgID, "/rate-limits/managed-marker"))
+}
+
 // ── Audit log extended ────────────────────────────────────────────────────────
 
 // ListPage returns a cursor-paginated page of audit log entries.

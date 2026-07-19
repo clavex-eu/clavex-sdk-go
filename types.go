@@ -179,6 +179,11 @@ type PasswordPolicy struct {
 	RequireSpecial bool   `json:"require_special"`
 	MaxAgeDays     int    `json:"max_age_days"`
 	HistoryCount   int    `json:"history_count"`
+	// Declarative-management marker (server migration 000179). Nil when the
+	// section is hand-managed. Read-only from the SDK's perspective — set it
+	// via WithManagedBy on the request context, not on the payload.
+	ManagedBy  *string `json:"managed_by,omitempty"`
+	ManagedRef *string `json:"managed_ref,omitempty"`
 }
 
 // SMTPConfig holds outbound mail settings for an org.
@@ -396,4 +401,9 @@ type RateLimitConfig struct {
 	LockoutDurationSeconds int `json:"lockout_duration_seconds"`
 	// IPMaxAttemptsPerMinute limits attempts per source IP (0 = disabled).
 	IPMaxAttemptsPerMinute int `json:"ip_max_attempts_per_minute,omitempty"`
+	// Declarative-management marker (server migration 000179). Nil when the
+	// section is hand-managed. Set it via WithManagedBy on the request context,
+	// not on the payload.
+	ManagedBy  *string `json:"managed_by,omitempty"`
+	ManagedRef *string `json:"managed_ref,omitempty"`
 }
