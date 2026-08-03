@@ -171,8 +171,9 @@ type Client struct {
 	Federation *FederationService
 
 	// Services — authorization & privileged access
-	FGA *FGAService
-	PAM *PAMService
+	FGA       *FGAService
+	PAM       *PAMService
+	DevicePKI *DevicePKIService
 
 	// Services — governance & lifecycle
 	ServiceAccounts *ServiceAccountService
@@ -253,6 +254,7 @@ func New(baseURL string, opts ...Option) (*Client, error) {
 	// authorization & privileged access
 	c.FGA = &FGAService{c: c}
 	c.PAM = &PAMService{c: c}
+	c.DevicePKI = &DevicePKIService{c: c}
 
 	// governance & lifecycle
 	c.ServiceAccounts = &ServiceAccountService{c: c}
